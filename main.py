@@ -11,6 +11,7 @@ from database import setup_database, save_records
 
 
 app = Flask(__name__)
+setup_database()
 
 CORS(app, resources={
     r"/api/*": {
@@ -174,7 +175,7 @@ def home():
 
 if __name__ == "__main__":
 
-    setup_database()
+    
 
     app.run(
         host="0.0.0.0",
