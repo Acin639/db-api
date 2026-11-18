@@ -16,7 +16,7 @@ def gethome():
     results = []
     seen_titles = set()
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
 
         futures = [
             executor.submit(func, arg)
