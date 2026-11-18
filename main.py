@@ -33,7 +33,7 @@ CATEGORIES = [
     "blowjob"
 ]
 
-MAX_WORKERS = 20
+MAX_WORKERS = 5
 
 refresh_lock = Lock()
 
