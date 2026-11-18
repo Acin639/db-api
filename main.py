@@ -11,6 +11,12 @@ from database import setup_database, save_records
 
 
 app = Flask(__name__)
+@app.route("/health")
+def health():
+    return jsonify({
+        "status": "online",
+        "message": "Flask server is running"
+    })
 setup_database()
 
 CORS(app, resources={
