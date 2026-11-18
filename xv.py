@@ -1,72 +1,151 @@
 import requests
 import json
+
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
+
 BASE_URL = "https://xvideos.com"
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0"
+}
+
+
+def extract_jsonld(soup):
+
+    results = []
+
+    for script in soup.find_all(
+        "script",
+        type="application/ld+json"
+    ):
+
+        try:
+            raw = script.string or script.get_text()
+
+            if not raw.strip():
+                continue
+
+            data = json.loads(raw)
+
+            items = data if isinstance(data, list) else [data]
+
+            for item in items:
+
+                if not isinstance(item, dict):
+                    continue
+
+                graph = item.get("@graph", [item])
+
+                if isinstance(graph, dict):
+                    graph = [graph]
+
+                for entry in graph:
+
+                    if isinstance(entry, dict):
+                        results.append(entry)
+
+        except (json.JSONDecodeError, TypeError) as error:
+            print(f"JSON-LD error: {error}")
+
+    return results
+
+
 def scrape_xv(route=""):
-    url = urljoin(BASE_URL + "/", route.lstrip("/"))
 
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    results = []
 
-    response = requests.get(url, headers=headers, timeout=20)
-    response.raise_for_status()
+    url = urljoin(
+        BASE_URL.rstrip("/") + "/",
+        route.lstrip("/")
+    )
+
+    try:
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=30
+        )
+
+        response.raise_for_status()
+
+    except requests.RequestException as error:
+        print(f"Listing error: {error}")
+        return results
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    thumbs = soup.find_all("div", class_="thumb-inside")
+    thumbs = soup.find_all(
+        "div",
+        class_="thumb-inside"
+    )
 
     for thumb in thumbs:
-        a_tag = thumb.find("a")
 
-        if not a_tag or not a_tag.get("href"):
+        a_tag = thumb.find("a", href=True)
+
+        if not a_tag:
             continue
 
-        page_url = urljoin(BASE_URL + "/", a_tag["href"])
+        page_url = urljoin(
+            BASE_URL.rstrip("/") + "/",
+            a_tag["href"]
+        )
 
         try:
             page = requests.get(
                 page_url,
-                headers=headers,
-                timeout=20
+                headers=HEADERS,
+                timeout=30
             )
+
             page.raise_for_status()
 
-            page_soup = BeautifulSoup(page.text, "html.parser")
-
-            scripts = page_soup.find_all(
-                "script",
-                type="application/ld+json"
+            page_soup = BeautifulSoup(
+                page.text,
+                "html.parser"
             )
 
-            for script in scripts:
-                try:
-                    data = json.loads(script.string or script.get_text())
+            entries = extract_jsonld(page_soup)
 
-                    items = data if isinstance(data, list) else [data]
+            for entry in entries:
 
-                    for item in items:
-                        if not isinstance(item, dict):
-                            continue
+                title = entry.get("name")
 
-                        entries = item.get("@graph", [item])
+                thumbnail = (
+                    entry.get("thumbnailUrl")
+                    or entry.get("image")
+                )
 
-                        for entry in entries:
-                            if not isinstance(entry, dict):
-                                continue
+                if isinstance(thumbnail, list):
+                    thumbnail = thumbnail[0] if thumbnail else None
 
-                            yield {
-                                "name": entry.get("name"),
-                                "thumbnailUrl": entry.get("thumbnailUrl"),
-                                "duration": entry.get("duration"),
-                                "contentUrl": entry.get("contentUrl")
-                            }
+                if isinstance(thumbnail, dict):
+                    thumbnail = thumbnail.get("url")
 
-                except json.JSONDecodeError:
+                video = (
+                    entry.get("contentUrl")
+                    or entry.get("embedUrl")
+                )
+
+                duration = entry.get("duration") or ""
+
+                if not title or not thumbnail or not video:
                     continue
 
-        except requests.RequestException as e:
-            print(f"Error scraping {page_url}: {e}")
+                results.append({
+                    "title": title.strip(),
+                    "thumbnailUrl": thumbnail,
+                    "contentUrl": video,
+                    "duration": duration,
+                    "views": ""
+                })
+
+        except requests.RequestException as error:
+            print(f"Page scraping error ({page_url}): {error}")
+
+        except Exception as error:
+            print(f"Unexpected scraping error: {error}")
+
+    return results
