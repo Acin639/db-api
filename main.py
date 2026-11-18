@@ -50,6 +50,7 @@ def normalize(item, category=None):
 
     thumbnail = (
         item.get("thumbnailUrl")
+        or item.get("thumbnail")
         or item.get("image")
     )
 
@@ -57,6 +58,10 @@ def normalize(item, category=None):
         item.get("contentUrl")
         or item.get("videourl")
         or item.get("video")
+        or item.get("default_quality_url")
+        or item.get("hd_quality")
+        or item.get("uhd_quality")
+        or item.get("low_quality")
     )
 
     if not title or not video:
