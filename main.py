@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+from haha import Haha
 
 from home_merge_db import gethome as scrape_home
 from shorts import scrape_shorts as get_shorts
@@ -95,7 +96,7 @@ def get_results(data):
 def run_scrapers():
 
     tasks = [
-        ("home", scrape_home, (10,), None),
+        ("home", Haha,(),None),
         ("shorts", get_shorts, (), None)
     ]
 
